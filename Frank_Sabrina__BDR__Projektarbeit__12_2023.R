@@ -1,8 +1,3 @@
-#git add
-#git commit -m "adding a new file" 
-#git status
-#git push
-
 ####################################
 # Lung Cancer Risk Prediction in R #
 # Author: Sabrina Frank            #
@@ -33,6 +28,9 @@ lungcancer_raw
 dimensions <- dim(lungcancer_raw)
 str(lungcancer_raw)
 summary <- summary(lungcancer_raw)
+###Check NAs values
+lungcancer_raw |> sapply(function(x)sum(is.na(x)))
+
 
 
 
@@ -42,6 +40,9 @@ summary <- summary(lungcancer_raw)
 
 ## Patient ID und Index entfernen
 lungcancer_raw[,(names(lungcancer_raw)[0:2]):=NULL]
+
+## Age in Int umwandeln
+lungcancer_raw[, Age := as.integer(Age)]
 
 ## Gender umcodieren 1=Male, 2=Female
 lungcancer_raw[, Gender := as.character(Gender)][Gender == "1", Gender := "M"]
@@ -61,10 +62,34 @@ str(lungcancer_raw)
 
 
 
+##########################################
+# Reduction (Korrelation suchen um vllt. Features zu entfernen)
+
+
+
+##########################################
+# splitten des Datensatzes in Training und Test
+
+
+
+##########################################
+# Encoden und Labeln
+
+
+
+
+
+##################################
+# Machine Learning
+# https://www.kaggle.com/code/takkimsncn/lung-cancer-prediction/notebook
+
+
+
+
 
 
 ## ToDO vielleicht verwerfen
-## Piping
+## Piping https://www.r-bloggers.com/2021/05/the-new-r-pipe/
 # lungcancer <- lungcancer_raw |>
                     
               
