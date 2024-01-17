@@ -11,14 +11,15 @@
 
 
 # install.packages("data.table")
-library("data.table")
+library(data.table)
 # install.packages("GGally")
 library(GGally) #Visualisierung Pairplots
 # install.packages("caret")
 library(caret) #ToDo wofür brauch ich das?
-# install.packages(utiml)
+# install.packages("utiml")
 library(utiml) #paper zitieren
-
+# install.packages("magrittr")
+library(magrittr)
 
 ##########################################
 # Importieren und Sichten des Datensatzes
@@ -32,7 +33,7 @@ class(lungcancer_raw)
 lungcancer_raw
 dimensions <- dim(lungcancer_raw)
 str(lungcancer_raw)
-summary <- summary(lungcancer_raw)
+summary(lungcancer_raw)
 ###Check NAs values
 lungcancer_raw |> sapply(function(x)sum(is.na(x)))
 
@@ -54,17 +55,19 @@ lungcancer_raw[, Gender := as.character(Gender)][Gender == "1", Gender := "M"]
 lungcancer_raw[, Gender := as.character(Gender)][Gender == "2", Gender := "F"]
 
 ## Faktoren für Level einführen 
-### https://datatables.net/forums/discussion/7001/solved-row-count-start-with-0-or-1
-lungcancer_raw[,2:24] <- lapply(lungcancer_raw[,3:24],as.factor) #ToDo: schauen, ob mit Gender als Faktor geht
+lungcancer_raw[,2:24] <- lapply(lungcancer_raw[,2:24],as.factor) #ToDo: schauen, ob mit Gender als Faktor geht
 lungcancer_raw[,3:23] <- lapply(lungcancer_raw[,3:23],ordered)
 
 ### Faktorordnung der Level-Spalte
 lungcancer_raw[, ("Level") := ordered(get("Level"), levels = c("Low", "Medium", "High"))]
+
+### Bereinigung checken
 levels(lungcancer_raw$Level)
 str(lungcancer_raw)
 
-
 ### in lungcancer_dt abspeichern
+lungcancer_dt = copy(lungcancer_raw) 
+
 
 
 
@@ -72,19 +75,17 @@ str(lungcancer_raw)
 # Visualisierung des Datensatzes
 
 
-ggpairs(data) # braucht evtl. df statt dt
+ggpairs(lungcancer_dt) #ToDo zu groß
+# https://ggobi.github.io/ggally/articles/ggpairs.html
+# https://stackoverflow.com/questions/48123611/using-ggpairs-on-a-large-dataset-with-many-variables
 
-lungcancer_dt %>% gather() %>%
-    ggplot(aes(x=value)) +
-    geom_histogram(fill="steelblue", alpha=0.7) +
-    theme_minimal() +
-    facet_wrap(~keyscales="free")
 
 # boxplot()
 # hist()
 
-#check balance of data
-
+#Check Balance der Target Klassen
+ggally_barDiag(lungcancer_dt, mapping = ggplot2::aes(x = Level), rescale = FALSE)
+# Frage: unbalanciert?
 
 
 ##########################################
@@ -92,11 +93,9 @@ lungcancer_dt %>% gather() %>%
 # wenn corr größer 0.8 -> weg damit
 # https://www.r-bloggers.com/2022/02/beginners-guide-to-machine-learning-in-r-with-step-by-step-tutorial/
 
-lungcancer_dt %>% mutate_if(is.factor,as.numeric) 
-    %>% cor() 
-    %>% as.data.frame()
-    %>% select('Level')
-    %>% arrange(-Level)
+lungcancer_dt |> mutate_if(is.factor,as.numeric) |> cor() |> as.data.frame() |> select('Level') |> arrange(-Level)
+
+
 
 ##barplots für categorische variablen
 
@@ -133,7 +132,6 @@ train <- normalize_mldata(mdata) #Frage: vor split? oder nacher?
 
 ## Label Encoding und so
 
-## check balance of data
 # remove_skewness_labels(mdata) #evtl. checken, ob ich das brauch
 
 
