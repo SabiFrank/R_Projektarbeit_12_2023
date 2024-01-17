@@ -19,8 +19,6 @@ library(GGally) #Visualisierung Pairplots
 library(caret) #Confusionmatrix
 # install.packages("mlbench")
 library(mlbench) #Confusionmatrix
-# install.packages("utiml")
-library(utiml) #paper zitieren
 # install.packages("magrittr")
 library(magrittr)
 # install.packages("tidyverse")
@@ -154,12 +152,14 @@ ggsave(filename = "target_balance.svg",
 
 
 ##########################################
-# Featureselektion und -reduktion
-# https://www.r-bloggers.com/2022/02/beginners-guide-to-machine-learning-in-r-with-step-by-step-tutorial/
-# Fragen: Reduktion nötig? guter Ansatz?
+# Preprocessing
 
 
-## Korrelation einzelner Spalten mit dem Level des Lungenkrebs -> je höher desto wichtiger? Fragen
+## Featureselektion und -reduktion
+## https://www.r-bloggers.com/2022/02/beginners-guide-to-machine-learning-in-r-with-step-by-step-tutorial/
+## Fragen: Reduktion nötig? guter Ansatz?
+
+### Korrelation einzelner Spalten mit dem Level des Lungenkrebs -> je höher desto wichtiger? Fragen
 corr_level <- lungcancer_clean %>% 
               mutate_if(is.factor, as.numeric) %>%
               cor() %>% 
@@ -167,20 +167,20 @@ corr_level <- lungcancer_clean %>%
               select(Level) %>% 
               arrange(-Level)
 
-## Korrelation der Features untereinander
+### Korrelation der Features untereinander
 corr <- lungcancer_clean %>% 
         mutate_if(is.factor, as.numeric) %>%
         cor() %>% 
         as.data.frame()
 
-## Korrelationsmatrix (Dimensions: 2300x1000)
+### Korrelationsmatrix (Dimensions: 2300x1000)
 corr %>% mutate(var2=rownames(.)) %>%
          pivot_longer(!var2, values_to = "value") %>%
          ggplot(aes(x=name, y=var2, fill = abs(value), label = round(value,2))) +
          geom_tile() + geom_label() + xlab("") + ylab("") +
          ggtitle("Korrelationsmatrix der Prediktoren") +
          labs(fill="Korrelation\n(absolut):")
-### Speichern der Korrelationsmatrix
+#### Speichern der Korrelationsmatrix
 ggsave(filename = "correlation_matrix.svg",
        plot = last_plot(),
        device = "svg",
@@ -193,27 +193,34 @@ ggsave(filename = "correlation_matrix.svg",
        limitsize = FALSE,
 )
 
-## Features finden, die hoch korreliert sind (>0.8) und deren Indices verwerfen
+### Features finden, die hoch korreliert sind (>0.8) und deren Indices verwerfen
 highly_corr <- caret::findCorrelation(cor(corr), cutoff=0.8)
 highly_corr
-## Hochkorrelierte Spalten entfernen
+### Hochkorrelierte Spalten entfernen
 lungcancer_slct <- lungcancer_clean[,(names(lungcancer_raw)[highly_corr]):=NULL]
 
 
 
-## ToDo mit Cramer wegen Faktoren Features? # Frage ob das besser ist als Korrelation 
-# Für Features
+### ToDo mit Cramer wegen Faktoren Features? # Frage ob das besser ist als Korrelation 
+### Für Features
 lungcancer_cramer <- lungcancer_clean[, !c("Age","Level")]
 assoc <- table(lungcancer_cramer)
-# Calculate Cramer's V
-# assocstats(lungcancer_cramer$cramer)
+### Calculate Cramer's V
+### assocstats(lungcancer_cramer$cramer)
 assocstats(assoc$cramer) 
+
+
+## Normalisierung: Min-Max Scalierung der Spalte Age #Frage: vor split okay? 
+## ToDo: wie?                 
+lungcancer_df["Age"]
+
+
 
 
 
 
 ##########################################
-# splitten des Datensatzes in Training und Test
+# Splitten des Datensatzes in Training und Testset
 
 split <- sample(nrow(lungcancer_dt),nrow(lungcancer_dt)*0.8) #ToDo schauen, ob 80/20 gut ist und vllt schreibweise aus corrlink
 train <- lungcancer_dt[split,-c(1:2)] #todo c vielleicht wegnehmen
@@ -221,23 +228,15 @@ test <- lungcancer_dt[-split,-c(1:2)] #todo c vielleicht wegnehmen
 dim(train)
 dim(test)
 
-# mit utiml
-ds <- create_holdout_partition(new.toyml, c(train=0.7, test=0.3), method="stratified")
-model <- br(ds$train, "RF")
 
 
 
 ##########################################
 # Encoden und Labeln, preprocessing
 
-### Normalisierung der Spalte Age
-train <- normalize_mldata(mdata) #Frage: vor split? oder nacher? 
-
 # k-folf stratified
 
 ## Label Encoding und so
-
-# remove_skewness_labels(mdata) #evtl. checken, ob ich das brauch
 
 
 
@@ -289,13 +288,6 @@ algorithm <- "SVM"
 prediction <- predict(MLmodel,newdata=test[-24])
 confusionMatrix(prediction,test$Level)
 
-# mit utiml
-predictions <- predict(model, ds$test)
-head(predictions)
-results <- multilabel_evaluate(ds$test, predictions, c("example-based", "macro-F1"))
-round(results, 4)
-
-cm <- multilabel_confusion_matrix(ds$test, predictions)
 
 
 ## ToDO vielleicht machen
