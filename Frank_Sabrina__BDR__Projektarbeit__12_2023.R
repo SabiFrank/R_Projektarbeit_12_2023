@@ -8,6 +8,7 @@
 
 ##########################################
 # Installieren von benötigten Bibliotheken
+# ToDo: rausfinden für was Packages sind und eventuell welches rausschmeißen, die nicht gebraucht werden
 
 
 # install.packages("data.table")
@@ -15,22 +16,24 @@ library(data.table)
 # install.packages("GGally")
 library(GGally) #Visualisierung Pairplots
 # install.packages("caret")
-library(caret) #Confusionmatrix ToDo
+library(caret) #Confusionmatrix
 # install.packages("mlbench")
 library(mlbench) #Confusionmatrix
 # install.packages("utiml")
 library(utiml) #paper zitieren
 # install.packages("magrittr")
 library(magrittr)
-
 # install.packages("tidyverse")
 library(tidyverse)
 # install.packages("party")
 library(party)
-
-
 # install.packages("vcd")
 library(vcd) # für Korrelationsanalyse für nicht numerische Features
+# install.packages("svglite")
+library(svglite) # für ggsave Funktion
+
+## Reproduzierbarkeit des Codes
+set.seed(1)
 
 
 
@@ -51,37 +54,39 @@ summary(lungcancer_raw)
 ###Check NAs values
 lungcancer_raw %>% sapply(function(x)sum(is.na(x)))
 
-## Reproduzierbarkeit des Codes
-set.seed(1)
+### Kopie erstellen
+lungcancer = copy(lungcancer_raw) 
+
 
 
 ##########################################
 # Säubern des Datensatzes
-
+# ToDo: OccuPational fehler korrigieren Column chronic Lung Disease name
 
 ## Patient ID und Index entfernen
-lungcancer_raw[,(names(lungcancer_raw)[0:2]):=NULL]
+lungcancer[,(names(lungcancer)[0:2]):=NULL]
 
-## Age in Int umwandeln
-lungcancer_raw[, Age := as.integer(Age)]
+## Age in Integer umwandeln
+lungcancer[, Age := as.integer(Age)]
 
-## Gender umcodieren 1=Male, 2=Female
-lungcancer_raw[, Gender := as.character(Gender)][Gender == "1", Gender := "M"]
-lungcancer_raw[, Gender := as.character(Gender)][Gender == "2", Gender := "F"]
+## Gender umcodieren: 1=Male, 2=Female
+lungcancer[, Gender := as.character(Gender)][Gender == "1", Gender := "M"]
+lungcancer[, Gender := as.character(Gender)][Gender == "2", Gender := "F"]
 
-## Faktoren für Level einführen 
-lungcancer_raw[,2:24] <- lapply(lungcancer_raw[,2:24],as.factor) #ToDo: schauen, ob mit Gender als Faktor geht
-lungcancer_raw[,3:23] <- lapply(lungcancer_raw[,3:23],ordered)
+## Für Visualisierung abspeichern
+lungcancer_bar = copy(lungcancer) 
 
-### Faktorordnung der Level-Spalte
-lungcancer_raw[, ("Level") := ordered(get("Level"), levels = c("Low", "Medium", "High"))]
+## Faktoren einführen 
+lungcancer[,2:24] <- lapply(lungcancer[,2:24],as.factor)
+lungcancer[,3:23] <- lapply(lungcancer[,3:23],ordered)
+lungcancer[, ("Level") := ordered(get("Level"), levels = c("Low", "Medium", "High"))]
 
-### Bereinigung checken
-levels(lungcancer_raw$Level)
-str(lungcancer_raw)
+## Bereinigung checken
+levels(lungcancer$Level)
+str(lungcancer)
 
-### in lungcancer_dt abspeichern
-lungcancer_dt = copy(lungcancer_raw) 
+## In besäuberte data.table abspeichern
+lungcancer_clean = copy(lungcancer) 
 
 
 
@@ -90,64 +95,121 @@ lungcancer_dt = copy(lungcancer_raw)
 # Visualisierung des Datensatzes
 
 
-ggpairs(lungcancer_dt) #ToDo zu groß
-# https://ggobi.github.io/ggally/articles/ggpairs.html
-# https://stackoverflow.com/questions/48123611/using-ggpairs-on-a-large-dataset-with-many-variables
+## Übersichtsgrafik Pairplots aller Features
+ggpairs(lungcancer_clean)
+### Speichern des Plots
+ggsave(filename = "pairplot.svg",
+  plot = last_plot(),
+  device = "svg",
+  path = "./plots",
+  scale = 1,
+  width = 11000,
+  height = 11000,
+  units = "px",
+  dpi = 300,
+  limitsize = FALSE,
+)
 
+## Barplots für kategorische Spalten
+lungcancer_bar <- lungcancer_bar[, !c("Age", "Gender")]
+lungcancer_bar %>% pivot_longer(!Level, values_to = "value") %>%
+                  # ggplot(aes(x = value, fill = factor(Level))) +
+                  ggplot(aes(x=factor(value), fill=ordered(Level, c("Low", "Medium", "High")))) +
+                  scale_fill_manual(values=c("burlywood1", "coral1", "darkred")) +
+                  geom_bar(position="fill", alpha=.7)+
+                  theme_minimal() +
+                  labs(fill="Lungenkrebs:") +
+                  facet_wrap(~name, scales="free")
+### Speichern des Plots
+ggsave(filename = "barplot.svg",
+       plot = last_plot(),
+       device = "svg",
+       path = "./plots",
+       scale = 1,
+       width = 3000,
+       height = 3000,
+       units = "px",
+       dpi = 300,
+       limitsize = FALSE,
+)
 
-# boxplot()
-# hist()
-
-#Check Balance der Target Klassen
-ggally_barDiag(lungcancer_dt, 
+#Check Balance der Target-Klassen #Frage: unbalanciert?
+ggally_barDiag(lungcancer_clean, 
                mapping = ggplot2::aes(x = Level), 
                rescale = FALSE)
-# Frage: unbalanciert?
+### Speichern des Plots
+ggsave(filename = "target_balance.svg",
+       plot = last_plot(),
+       device = "svg",
+       path = "./plots",
+       scale = 1,
+       width = 1000,
+       height = 800,
+       units = "px",
+       dpi = 300,
+       limitsize = FALSE,
+)
 
 
 
 
 ##########################################
-# Reduction (Korrelation suchen um vllt. Features zu entfernen/ Feature Selection)
+# Featureselektion und -reduktion
 # https://www.r-bloggers.com/2022/02/beginners-guide-to-machine-learning-in-r-with-step-by-step-tutorial/
+# Fragen: Reduktion nötig? guter Ansatz?
 
 
-corr_level <- lungcancer_dt %>% 
+## Korrelation einzelner Spalten mit dem Level des Lungenkrebs -> je höher desto wichtiger? Fragen
+corr_level <- lungcancer_clean %>% 
               mutate_if(is.factor, as.numeric) %>%
               cor() %>% 
               as.data.frame() %>% 
               select(Level) %>% 
               arrange(-Level)
 
-corr <- lungcancer_dt %>% 
+## Korrelation der Features untereinander
+corr <- lungcancer_clean %>% 
         mutate_if(is.factor, as.numeric) %>%
         cor() %>% 
         as.data.frame()
 
+## Korrelationsmatrix (Dimensions: 2300x1000)
 corr %>% mutate(var2=rownames(.)) %>%
-  pivot_longer(!var2, values_to = "value") %>%
-  ggplot(aes(x=name, y=var2, fill = abs(value), label = round(value,2))) +
-  geom_tile() + geom_label() + xlab("") + ylab("") +
-  ggtitle("Korrelationsmatrix der Prediktoren") +
-  labs(fill="Korrelation\n(absolut):")
-## Dimensions: Width 2300, Height 1000
+         pivot_longer(!var2, values_to = "value") %>%
+         ggplot(aes(x=name, y=var2, fill = abs(value), label = round(value,2))) +
+         geom_tile() + geom_label() + xlab("") + ylab("") +
+         ggtitle("Korrelationsmatrix der Prediktoren") +
+         labs(fill="Korrelation\n(absolut):")
+### Speichern der Korrelationsmatrix
+ggsave(filename = "correlation_matrix.svg",
+       plot = last_plot(),
+       device = "svg",
+       path = "./plots",
+       scale = 1,
+       width = 10000,
+       height = 5500,
+       units = "px",
+       dpi = 300,
+       limitsize = FALSE,
+)
 
-# find attributes that are highly corrected (ideally >0.75) -> verwerfen
-highly_corr <- findCorrelation(corr, cutoff=0.5)
+## Features finden, die hoch korreliert sind (>0.8) und deren Indices verwerfen
+highly_corr <- caret::findCorrelation(cor(corr), cutoff=0.8)
+highly_corr
+## Hochkorrelierte Spalten entfernen
+lungcancer_slct <- lungcancer_clean[,(names(lungcancer_raw)[highly_corr]):=NULL]
 
-## ToDo mit Cramer wegen Faktoren Features?
+
+
+## ToDo mit Cramer wegen Faktoren Features? # Frage ob das besser ist als Korrelation 
 # Für Features
-assoc_dt <- table(lungcancer_dt[2:24])
+lungcancer_cramer <- lungcancer_clean[, !c("Age","Level")]
+assoc <- table(lungcancer_cramer)
 # Calculate Cramer's V
-assocstats(lungcancer_dt$cramer)
-assocstats(assoc_dt) 
+# assocstats(lungcancer_cramer$cramer)
+assocstats(assoc$cramer) 
 
 
-##barplots für categorische variablen
-
-# ToDo: X,y aufspalten??
-lungcancer_target <- lungcancer_dt$Level
-lungcancer_features <- lungcancer_dt |> .[0:23] |> 
 
 
 ##########################################
