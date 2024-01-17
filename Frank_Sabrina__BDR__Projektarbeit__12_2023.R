@@ -31,10 +31,8 @@ library(vcd) # für Korrelationsanalyse für nicht numerische Features
 library(svglite) # für ggsave Funktion
 
 # Für Machine Learning Algorithmus
-# install.packages("naivebayes")
-library(naivebayes)
-# install.packages("psych")
-library(psych)
+# install.packages("randomForest")
+library(randomForest)
 
 ## Reproduzierbarkeit des Codes
 set.seed(1)
@@ -137,7 +135,7 @@ ggsave(filename = "barplot.svg",
        limitsize = FALSE,
 )
 
-#Check Balance der Target-Klassen #Frage: unbalanciert?
+## Check Balance der Target-Klassen #Frage: unbalanciert?
 ggally_barDiag(lungcancer_clean, 
                mapping = ggplot2::aes(x = Level), 
                rescale = FALSE)
@@ -201,7 +199,7 @@ ggsave(filename = "correlation_matrix.svg",
 highly_corr <- caret::findCorrelation(cor(corr), cutoff=0.8)
 highly_corr
 ## Hochkorrelierte Spalten entfernen
-lungcancer_slct <- lungcancer_clean[,(names(lungcancer_raw)[highly_corr]):=NULL]
+lungcancer_slct <- lungcancer_clean[, (names(lungcancer_raw)[highly_corr]):=NULL]
 
 
 
@@ -261,22 +259,69 @@ y_test <- test[, "Level"]
 ##################################
 # Machine Learning
 # https://www.kaggle.com/code/takkimsncn/lung-cancer-prediction/notebook
-
-# Faktorisierung klappt vielleicht nicht mit ML model
-# k-fold cross val?
-
-# which model to use: https://de.mathworks.com/campaigns/offers/next/choosing-the-best-machine-learning-classification-model-and-avoiding-overfitting.html
-# bagged decision tree
+# https://www.r-bloggers.com/2022/02/beginners-guide-to-machine-learning-in-r-with-step-by-step-tutorial/
 
 
+model <- caret::train(x_train,
+                      y_train,
+                      method = "rf",
+                      tuneGrid = expand.grid(mtry = seq(5, ncol(x_train), by = 5)),
+                      trControl = trainControl(method = "cv", number = 5, verboseIter = T))
+model
+# Random Forest 
+# 
+# 800 samples
+# 13 predictor
+# 3 classes: 'Low', 'Medium', 'High' 
+# 
+# No pre-processing
+# Resampling: Cross-Validated (5 fold) 
+# Summary of sample sizes: 640, 641, 641, 640, 638 
+# Resampling results across tuning parameters:
+#   
+#   mtry  Accuracy  Kappa
+# 5    1         1    
+# 10    1         1    
+# 
+# Accuracy was used to select the optimal model using the largest value.
+# The final value used for the model was mtry = 5.
+
+print(model)
+
+plot(varImp(model), 
+     main = "Feature-Wichtigkeit des RF Models",
+     xlab = "Wichtigkeit")
 
 
+train_accuracy <- max(model$results$Accuracy)
+train_accuracy
 
 
 
 ###################################
 # Prediction and Confusionmatrix
 
-prediction <- predict(MLmodel,newdata=test[-24])
-confusionMatrix(prediction,test$Level)
+## Vorhersage auf Grundlage der Testdaten
+prediction <- predict(model, newdata = x_test)
 
+## Confusionsmatrix
+confusionMatrix(prediction, y_test)
+
+
+## ToDo: tut nicht
+precision(prediction, y_test)
+recall(prediction, y_test)
+F_meas(prediction, y_test)
+
+
+propability <- predict(model, type = "prob")
+library(ROCR)
+perf = prediction(pred1[,2], mydata$Creditability)
+# 1. Area under curve
+auc = performance(perf, "auc")
+auc
+# 2. True Positive and Negative Rate
+tpn = performance(perf, "tpr","fpr")
+# 3. Plot the ROC curve
+plot(pred3,main="ROC Curve for Random Forest",col=2,lwd=2)
+abline(a=0,b=1,lwd=2,lty=2,col="gray")
