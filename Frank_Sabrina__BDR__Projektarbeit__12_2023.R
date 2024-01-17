@@ -263,24 +263,14 @@ y_test <- test[, "Level"]
 # https://www.kaggle.com/code/takkimsncn/lung-cancer-prediction/notebook
 
 # Faktorisierung klappt vielleicht nicht mit ML model
-
-# which model to use: https://de.mathworks.com/campaigns/offers/next/choosing-the-best-machine-learning-classification-model-and-avoiding-overfitting.html
-# erst mal naive bayes probieren
-# bagged decision tree
-# svm gut, aber vllt. rechenintensiv, braucht viel tuning
-
 # k-fold cross val?
 
-## Frequency Identification
-## frequency of response variable under each rank nötig? (minimum frequency of each class is 5 required)
-count <- as.data.frame(table(unlist(lungcancer_slct)))
-xtabs(formula = ~., data = count)
-xtabs(formula = ~Age+Level, data = lungcancer_slct)
+# which model to use: https://de.mathworks.com/campaigns/offers/next/choosing-the-best-machine-learning-classification-model-and-avoiding-overfitting.html
+# bagged decision tree
 
-## Erstellen des ML Models
-### Laplace smoothing wegen zero probabilities für fast alle Features
-model <- naive_bayes(x = x_train, y = y_train, laplace = 1, usekernel = TRUE) 
-plot(model)
+
+
+
 
 
 
@@ -290,11 +280,3 @@ plot(model)
 prediction <- predict(MLmodel,newdata=test[-24])
 confusionMatrix(prediction,test$Level)
 
-
-
-## ToDO vielleicht machen
-### Piping https://www.r-bloggers.com/2021/05/the-new-r-pipe/
-### lungcancer <- lungcancer_raw |>
-
-### R Dashboard
-### https://www.r-bloggers.com/2021/11/top-r-packages-for-visualizing-table-data-make-stunning-tables-in-minutes/
