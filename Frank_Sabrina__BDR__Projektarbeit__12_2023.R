@@ -46,7 +46,7 @@ class(lungcancer_raw)
 
 ## Sichten des Datensatzes
 lungcancer_raw
-dimensions <- dim(lungcancer_raw)
+dim(lungcancer_raw)
 str(lungcancer_raw)
 summary(lungcancer_raw)
 ###Check NAs values
@@ -152,14 +152,12 @@ ggsave(filename = "target_balance.svg",
 
 
 ##########################################
-# Preprocessing
+# Featureselektion und -reduktion
+# https://www.r-bloggers.com/2022/02/beginners-guide-to-machine-learning-in-r-with-step-by-step-tutorial/
+# Fragen: Reduktion nötig? guter Ansatz?
 
 
-## Featureselektion und -reduktion
-## https://www.r-bloggers.com/2022/02/beginners-guide-to-machine-learning-in-r-with-step-by-step-tutorial/
-## Fragen: Reduktion nötig? guter Ansatz?
-
-### Korrelation einzelner Spalten mit dem Level des Lungenkrebs -> je höher desto wichtiger? Fragen
+## Korrelation einzelner Spalten mit dem Level des Lungenkrebs -> je höher desto wichtiger? Fragen
 corr_level <- lungcancer_clean %>% 
               mutate_if(is.factor, as.numeric) %>%
               cor() %>% 
@@ -167,20 +165,20 @@ corr_level <- lungcancer_clean %>%
               select(Level) %>% 
               arrange(-Level)
 
-### Korrelation der Features untereinander
+## Korrelation der Features untereinander
 corr <- lungcancer_clean %>% 
         mutate_if(is.factor, as.numeric) %>%
         cor() %>% 
         as.data.frame()
 
-### Korrelationsmatrix (Dimensions: 2300x1000)
+## Korrelationsmatrix (Dimensions: 2300x1000)
 corr %>% mutate(var2=rownames(.)) %>%
          pivot_longer(!var2, values_to = "value") %>%
          ggplot(aes(x=name, y=var2, fill = abs(value), label = round(value,2))) +
          geom_tile() + geom_label() + xlab("") + ylab("") +
          ggtitle("Korrelationsmatrix der Prediktoren") +
          labs(fill="Korrelation\n(absolut):")
-#### Speichern der Korrelationsmatrix
+### Speichern der Korrelationsmatrix
 ggsave(filename = "correlation_matrix.svg",
        plot = last_plot(),
        device = "svg",
@@ -193,28 +191,21 @@ ggsave(filename = "correlation_matrix.svg",
        limitsize = FALSE,
 )
 
-### Features finden, die hoch korreliert sind (>0.8) und deren Indices verwerfen
+## Features finden, die hoch korreliert sind (>0.8) und deren Indices verwerfen
 highly_corr <- caret::findCorrelation(cor(corr), cutoff=0.8)
 highly_corr
-### Hochkorrelierte Spalten entfernen
+## Hochkorrelierte Spalten entfernen
 lungcancer_slct <- lungcancer_clean[,(names(lungcancer_raw)[highly_corr]):=NULL]
 
 
 
-### ToDo mit Cramer wegen Faktoren Features? # Frage ob das besser ist als Korrelation 
-### Für Features
+## ToDo mit Cramer wegen Faktoren Features? # Frage ob das besser ist als Korrelation 
+## Für Features
 lungcancer_cramer <- lungcancer_clean[, !c("Age","Level")]
 assoc <- table(lungcancer_cramer)
-### Calculate Cramer's V
-### assocstats(lungcancer_cramer$cramer)
+## Calculate Cramer's V
+## assocstats(lungcancer_cramer$cramer)
 assocstats(assoc$cramer) 
-
-
-## Normalisierung: Min-Max Scalierung der Spalte Age #Frage: vor split okay? 
-## ToDo: wie?                 
-lungcancer_df["Age"]
-
-
 
 
 
@@ -222,9 +213,13 @@ lungcancer_df["Age"]
 ##########################################
 # Splitten des Datensatzes in Training und Testset
 
-split <- sample(nrow(lungcancer_dt),nrow(lungcancer_dt)*0.8) #ToDo schauen, ob 80/20 gut ist und vllt schreibweise aus corrlink
-train <- lungcancer_dt[split,-c(1:2)] #todo c vielleicht wegnehmen
-test <- lungcancer_dt[-split,-c(1:2)] #todo c vielleicht wegnehmen
+
+## Splitten zu 80/20
+split <- sample(1:nrow(lungcancer_slct), as.integer(0.8*nrow(lungcancer_slct)), F)
+train <- lungcancer_slct[split,]
+test <- lungcancer_slct[-split,]
+
+## Checken, ob Dimensionen erhalten sind
 dim(train)
 dim(test)
 
@@ -232,11 +227,28 @@ dim(test)
 
 
 ##########################################
-# Encoden und Labeln, preprocessing
-
+# Preprocessing
 # k-folf stratified
+# Frage: Muss ich nach skewedness schauen? https://www.r-bloggers.com/2015/07/how-to-make-a-rough-check-to-see-if-your-data-is-normally-distributed/
 
-## Label Encoding und so
+## Funktion für Preprocessing, das auf die Daten angewandt werden soll
+preprocessing <- function(df){
+  
+  # Normalisierung: Min-Max Scalierung der Spalte Age
+  process <- preProcess(df$Age, method = c("range"))
+  df$Age <- predict(process, df$Age)
+  
+  return(df[, names(df)!="Level"])
+}
+
+## Anwenden der preprocessing Funktion auf Train und Test Datenset
+x_train <- preprocessing(train)
+x_test <- preprocessing(test)
+y_train <- train[, "Level"]
+y_test <- test[, "Level"]
+
+
+                
 
 
 
