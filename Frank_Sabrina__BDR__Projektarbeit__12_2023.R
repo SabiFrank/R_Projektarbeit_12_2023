@@ -15,11 +15,25 @@ library(data.table)
 # install.packages("GGally")
 library(GGally) #Visualisierung Pairplots
 # install.packages("caret")
-library(caret) #ToDo wofür brauch ich das?
+library(caret) #Confusionmatrix ToDo
+# install.packages("mlbench")
+library(mlbench) #Confusionmatrix
 # install.packages("utiml")
 library(utiml) #paper zitieren
 # install.packages("magrittr")
 library(magrittr)
+
+# install.packages("tidyverse")
+library(tidyverse)
+# install.packages("party")
+library(party)
+
+
+# install.packages("vcd")
+library(vcd) # für Korrelationsanalyse für nicht numerische Features
+
+
+
 
 ##########################################
 # Importieren und Sichten des Datensatzes
@@ -35,9 +49,10 @@ dimensions <- dim(lungcancer_raw)
 str(lungcancer_raw)
 summary(lungcancer_raw)
 ###Check NAs values
-lungcancer_raw |> sapply(function(x)sum(is.na(x)))
+lungcancer_raw %>% sapply(function(x)sum(is.na(x)))
 
-
+## Reproduzierbarkeit des Codes
+set.seed(1)
 
 
 ##########################################
@@ -84,23 +99,53 @@ ggpairs(lungcancer_dt) #ToDo zu groß
 # hist()
 
 #Check Balance der Target Klassen
-ggally_barDiag(lungcancer_dt, mapping = ggplot2::aes(x = Level), rescale = FALSE)
+ggally_barDiag(lungcancer_dt, 
+               mapping = ggplot2::aes(x = Level), 
+               rescale = FALSE)
 # Frage: unbalanciert?
+
+
 
 
 ##########################################
 # Reduction (Korrelation suchen um vllt. Features zu entfernen/ Feature Selection)
-# wenn corr größer 0.8 -> weg damit
 # https://www.r-bloggers.com/2022/02/beginners-guide-to-machine-learning-in-r-with-step-by-step-tutorial/
 
-lungcancer_dt |> mutate_if(is.factor,as.numeric) |> cor() |> as.data.frame() |> select('Level') |> arrange(-Level)
 
+corr_level <- lungcancer_dt %>% 
+              mutate_if(is.factor, as.numeric) %>%
+              cor() %>% 
+              as.data.frame() %>% 
+              select(Level) %>% 
+              arrange(-Level)
+
+corr <- lungcancer_dt %>% 
+        mutate_if(is.factor, as.numeric) %>%
+        cor() %>% 
+        as.data.frame()
+
+corr %>% mutate(var2=rownames(.)) %>%
+  pivot_longer(!var2, values_to = "value") %>%
+  ggplot(aes(x=name, y=var2, fill = abs(value), label = round(value,2))) +
+  geom_tile() + geom_label() + xlab("") + ylab("") +
+  ggtitle("Korrelationsmatrix der Prediktoren") +
+  labs(fill="Korrelation\n(absolut):")
+## Dimensions: Width 2300, Height 1000
+
+# find attributes that are highly corrected (ideally >0.75) -> verwerfen
+highly_corr <- findCorrelation(corr, cutoff=0.5)
+
+## ToDo mit Cramer wegen Faktoren Features?
+# Für Features
+assoc_dt <- table(lungcancer_dt[2:24])
+# Calculate Cramer's V
+assocstats(lungcancer_dt$cramer)
+assocstats(assoc_dt) 
 
 
 ##barplots für categorische variablen
 
 # ToDo: X,y aufspalten??
-set.seed(1) #Todo checken??
 lungcancer_target <- lungcancer_dt$Level
 lungcancer_features <- lungcancer_dt |> .[0:23] |> 
 
@@ -108,7 +153,6 @@ lungcancer_features <- lungcancer_dt |> .[0:23] |>
 ##########################################
 # splitten des Datensatzes in Training und Test
 
-set.seed(1)
 split <- sample(nrow(lungcancer_dt),nrow(lungcancer_dt)*0.8) #ToDo schauen, ob 80/20 gut ist und vllt schreibweise aus corrlink
 train <- lungcancer_dt[split,-c(1:2)] #todo c vielleicht wegnehmen
 test <- lungcancer_dt[-split,-c(1:2)] #todo c vielleicht wegnehmen
@@ -116,7 +160,6 @@ dim(train)
 dim(test)
 
 # mit utiml
-set.seed(123)
 ds <- create_holdout_partition(new.toyml, c(train=0.7, test=0.3), method="stratified")
 model <- br(ds$train, "RF")
 
@@ -153,9 +196,33 @@ measures <- c("macro-F1", "micro-F1")
 algorithm <- "SVM"
 
 
+# Rank Features By Importance
+# 
+# The importance of features can be estimated from data by building a model. Some methods like decision trees have a built in mechanism to report on variable importance. For other algorithms, the importance can be estimated using a ROC curve analysis conducted for each attribute.
+# 
+# The example below loads the Pima Indians Diabetes dataset and constructs an Learning Vector Quantization (LVQ) model. The varImp is then used to estimate the variable importance, which is printed and plotted. It shows that the glucose, mass and age attributes are the top 3 most important attributes in the dataset and the insulin attribute is the least important.
+# Rank features by importance using the caret r package
+# R
+# # ensure results are repeatable
+# set.seed(7)
+# # load the library
+# library(mlbench)
+# library(caret)
+# # load the dataset
+# data(PimaIndiansDiabetes)
+# # prepare training scheme
+# control <- trainControl(method="repeatedcv", number=10, repeats=3)
+# # train the model
+# model <- train(diabetes~., data=PimaIndiansDiabetes, method="lvq", preProcess="scale", trControl=control)
+# # estimate variable importance
+# importance <- varImp(model, scale=FALSE)
+# # summarize importance
+# print(importance)
+# # plot importance
+# plot(importance)
+
 ###################################
 # Prediction and Confusionmatrix
-set.seed(12)
 
 prediction <- predict(MLmodel,newdata=test[-24])
 confusionMatrix(prediction,test$Level)
