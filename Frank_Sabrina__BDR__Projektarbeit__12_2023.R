@@ -30,6 +30,12 @@ library(vcd) # für Korrelationsanalyse für nicht numerische Features
 # install.packages("svglite")
 library(svglite) # für ggsave Funktion
 
+# Für Machine Learning Algorithmus
+# install.packages("naivebayes")
+library(naivebayes)
+# install.packages("psych")
+library(psych)
+
 ## Reproduzierbarkeit des Codes
 set.seed(1)
 
@@ -214,29 +220,31 @@ assocstats(assoc$cramer)
 # Splitten des Datensatzes in Training und Testset
 
 
-## Splitten zu 80/20
+## Splitten zu 80/20 und Conversion zu data frame für preprocessing
 split <- sample(1:nrow(lungcancer_slct), as.integer(0.8*nrow(lungcancer_slct)), F)
-train <- lungcancer_slct[split,]
-test <- lungcancer_slct[-split,]
+train <- as.data.frame(lungcancer_slct[split,])
+test <- as.data.frame(lungcancer_slct[-split,])
 
 ## Checken, ob Dimensionen erhalten sind
 dim(train)
 dim(test)
+class(train)
+class(test)
 
 
 
 
 ##########################################
 # Preprocessing
-# k-folf stratified
+# ToDo: Muss ich hier noch mehr machen?
 # Frage: Muss ich nach skewedness schauen? https://www.r-bloggers.com/2015/07/how-to-make-a-rough-check-to-see-if-your-data-is-normally-distributed/
 
 ## Funktion für Preprocessing, das auf die Daten angewandt werden soll
 preprocessing <- function(df){
   
-  # Normalisierung: Min-Max Scalierung der Spalte Age
-  process <- preProcess(df$Age, method = c("range"))
-  df$Age <- predict(process, df$Age)
+  # Normalisierung: Min-Max-Scalierung der Spalte Age
+  process <- preProcess(df["Age"], method = c("range"))
+  df["Age"] <- predict(process, df["Age"])
   
   return(df[, names(df)!="Level"])
 }
@@ -247,8 +255,6 @@ x_test <- preprocessing(test)
 y_train <- train[, "Level"]
 y_test <- test[, "Level"]
 
-
-                
 
 
 
@@ -265,34 +271,18 @@ y_test <- test[, "Level"]
 
 # k-fold cross val?
 
-measures <- c("macro-F1", "micro-F1")
-algorithm <- "SVM"
+## Frequency Identification
+## frequency of response variable under each rank nötig? (minimum frequency of each class is 5 required)
+count <- as.data.frame(table(unlist(lungcancer_slct)))
+xtabs(formula = ~., data = count)
+xtabs(formula = ~Age+Level, data = lungcancer_slct)
+
+## Erstellen des ML Models
+### Laplace smoothing wegen zero probabilities für fast alle Features
+model <- naive_bayes(x = x_train, y = y_train, laplace = 1, usekernel = TRUE) 
+plot(model)
 
 
-# Rank Features By Importance
-# 
-# The importance of features can be estimated from data by building a model. Some methods like decision trees have a built in mechanism to report on variable importance. For other algorithms, the importance can be estimated using a ROC curve analysis conducted for each attribute.
-# 
-# The example below loads the Pima Indians Diabetes dataset and constructs an Learning Vector Quantization (LVQ) model. The varImp is then used to estimate the variable importance, which is printed and plotted. It shows that the glucose, mass and age attributes are the top 3 most important attributes in the dataset and the insulin attribute is the least important.
-# Rank features by importance using the caret r package
-# R
-# # ensure results are repeatable
-# set.seed(7)
-# # load the library
-# library(mlbench)
-# library(caret)
-# # load the dataset
-# data(PimaIndiansDiabetes)
-# # prepare training scheme
-# control <- trainControl(method="repeatedcv", number=10, repeats=3)
-# # train the model
-# model <- train(diabetes~., data=PimaIndiansDiabetes, method="lvq", preProcess="scale", trControl=control)
-# # estimate variable importance
-# importance <- varImp(model, scale=FALSE)
-# # summarize importance
-# print(importance)
-# # plot importance
-# plot(importance)
 
 ###################################
 # Prediction and Confusionmatrix
