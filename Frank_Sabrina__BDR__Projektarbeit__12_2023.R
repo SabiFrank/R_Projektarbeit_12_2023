@@ -29,8 +29,7 @@ library(GGally)
 library(gridExtra)
 # install.packages("lattice")
 library(lattice)
-
-## Measure of association (Korrelationsmatrix für kategorische Daten)
+# Measure of association (Korrelationsmatrix für kategorische Daten)
 # install.packages("ggcorrplot")
 library(ggcorrplot) 
 
