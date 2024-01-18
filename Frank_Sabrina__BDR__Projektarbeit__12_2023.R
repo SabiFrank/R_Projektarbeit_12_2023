@@ -11,54 +11,36 @@
 
 
 ## Pipes
-# install.packages("magrittr")
-######library(magrittr)
 # install.packages("dplyr")
 library(dplyr)
 
-## Data frame handling
+## Data frame handling und Datenmanipulierung
 # install.packages("data.table")
 library(data.table)
-
-## Visualisierung
-# install.packages("GGally")
-library(GGally) # Pairplots
-# install.packages("svglite")
-######library(svglite) # für ggsave Funktion
-# install.packages("gridExtra")
-library(gridExtra)
-
-
-
-# install.packages("caret")
-library(caret) #Confusionmatrix
-# install.packages("mlbench")
-######library(mlbench) #Confusionmatrix
-
 # install.packages("tidyr")
 library(tidyr)
-# install.packages("party")
-######library(party)
-# install.packages("vcd")
-######library(vcd) # für Korrelationsanalyse für nicht numerische Features
 
+## Visualisierung
+# install.packages("ggplot2")
+library(ggplot2)
+# install.packages("GGally")
+library(GGally)
+# install.packages("gridExtra")
+library(gridExtra)
+# install.packages("lattice")
+library(lattice)
 
-# Für measure of association (Korrelationsmatrix für kategorische Daten)
+## Measure of association (Korrelationsmatrix für kategorische Daten)
 # install.packages("ggcorrplot")
 library(ggcorrplot) 
-# install.packages("rcompanion")
-######library(rcompanion) 
 
+## Machine Learning
+# install.packages("caret")
+library(caret)
 
-# Für Machine Learning Algorithmus
-# install.packages("randomForest")
-######library(randomForest)
-
-
-## Checken, welche Packages verwendet wurden
+## Verwendete Packages
 # install.packages("NCmisc")
 library(NCmisc)
-
 
 ## Reproduzierbarkeit des Codes
 set.seed(1)
@@ -383,8 +365,6 @@ y_test <- test[, "Level"]
 
 ##################################
 # Machine Learning
-# https://www.kaggle.com/code/takkimsncn/lung-cancer-prediction/notebook
-# https://www.r-bloggers.com/2022/02/beginners-guide-to-machine-learning-in-r-with-step-by-step-tutorial/
 
 
 ## Festlegen der Trainingseinstellungen
@@ -411,7 +391,7 @@ model
 # 
 # No pre-processing
 # Resampling: Cross-Validated (5 fold) 
-# Summary of sample sizes: 641, 639, 640, 640, 640 
+# Summary of sample sizes: 640, 641, 640, 640, 639
 # Resampling results across tuning parameters:
 #   
 # mtry  Accuracy  Kappa
@@ -427,7 +407,8 @@ model
 png("./plots/feature_importance.png", height=600, width=600)
 plot(varImp(model), 
      main = "Feature-Wichtigkeit des RF Models im Trainig",
-     xlab = "Wichtigkeit")
+     xlab = "Wichtigkeit",
+     ylab = "Feature")
 dev.off()
 
 
@@ -458,6 +439,7 @@ confusionMatrix(prediction, y_test)
 # 
 # Statistics by Class:
 #                      Class: Low Class: Medium Class: High
+# Class: Low Class: Medium Class: High
 # Sensitivity               1.000          1.00       1.000
 # Specificity               1.000          1.00       1.000
 # Pos Pred Value            1.000          1.00       1.000
@@ -475,4 +457,20 @@ confusionMatrix(prediction, y_test)
 
 pkgs <- NCmisc::list.functions.in.file("Frank_Sabrina__BDR__Projektarbeit__12_2023.R")
 summary(pkgs)
-
+#                                   Length      Class      Mode     
+# .GlobalEnv                             1     -none- character
+# c(".GlobalEnv", "package:caret")       1     -none- character
+# c("package:graphics", "package:base")  1     -none- character
+# package:base                          30     -none- character
+# package:caret                          4     -none- character
+# package:data.table                     2     -none- character
+# package:dplyr                          3     -none- character
+# package:GGally                         2     -none- character
+# package:ggcorrplot                     1     -none- character
+# package:ggplot2                        9     -none- character
+# package:grDevices                      2     -none- character
+# package:gridExtra                      1     -none- character
+# package:NCmisc                         1     -none- character
+# package:stats                          3     -none- character
+# package:tidyr                          1     -none- character
+# package:utils                          1     -none- character
