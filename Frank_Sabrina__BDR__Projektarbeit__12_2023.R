@@ -8,31 +8,55 @@
 
 ##########################################
 # Installieren von benötigten Bibliotheken
-# ToDo: rausfinden für was Packages sind und eventuell welches rausschmeißen, die nicht gebraucht werden
 
 
+## Pipes
+# install.packages("magrittr")
+library(magrittr)
+# install.packages("dplyr")
+library(dplyr)
+
+## Data frame handling
 # install.packages("data.table")
 library(data.table)
+
+## Visualisierung
 # install.packages("GGally")
-library(GGally) #Visualisierung Pairplots
+library(GGally) # Pairplots
+# install.packages("svglite")
+library(svglite) # für ggsave Funktion
+# install.packages("gridExtra")
+library(gridExtra)
+
 # install.packages("caret")
 library(caret) #Confusionmatrix
 # install.packages("mlbench")
 library(mlbench) #Confusionmatrix
-# install.packages("magrittr")
-library(magrittr)
+
 # install.packages("tidyverse")
 library(tidyverse)
 # install.packages("party")
 library(party)
 # install.packages("vcd")
 library(vcd) # für Korrelationsanalyse für nicht numerische Features
-# install.packages("svglite")
-library(svglite) # für ggsave Funktion
+
+
+# Für measure of association (Korrelationsmatrix für kategorische Daten)
+# install.packages("ggcorrplot")
+library(ggcorrplot) 
+# install.packages("rcompanion")
+library(rcompanion) 
+
 
 # Für Machine Learning Algorithmus
 # install.packages("randomForest")
 library(randomForest)
+
+
+## Checken, welche Packages verwendet wurden
+# install.packages("NCmisc")
+library(NCmisc)
+
 
 ## Reproduzierbarkeit des Codes
 set.seed(1)
@@ -47,26 +71,117 @@ set.seed(1)
 ## Import mit fread
 lungcancer_raw <- fread(file = "./data/lung_cancer_patient_datasets.csv")
 class(lungcancer_raw)
+# [1] "data.table" "data.frame"
 
 ## Sichten des Datensatzes
 lungcancer_raw
 dim(lungcancer_raw)
-str(lungcancer_raw)
-summary(lungcancer_raw)
-###Check NAs values
-lungcancer_raw %>% sapply(function(x)sum(is.na(x)))
+# [1] 1000   26
 
-### Kopie erstellen
+str(lungcancer_raw)
+# Classes ‘data.table’ and 'data.frame':	1000 obs. of  26 variables:
+#   $ index                   : int  0 1 2 3 4 5 6 7 8 9 ...
+# $ Patient Id              : chr  "P1" "P10" "P100" "P1000" ...
+# $ Age                     : int  33 17 35 37 46 35 52 28 35 46 ...
+# $ Gender                  : int  1 1 1 1 1 1 2 2 2 1 ...
+# $ Air Pollution           : int  2 3 4 7 6 4 2 3 4 2 ...
+# $ Alcohol use             : int  4 1 5 7 8 5 4 1 5 3 ...
+# $ Dust Allergy            : int  5 5 6 7 7 6 5 4 6 4 ...
+# $ OccuPational Hazards    : int  4 3 5 7 7 5 4 3 5 2 ...
+# $ Genetic Risk            : int  3 4 5 6 7 5 3 2 6 4 ...
+# $ chronic Lung Disease    : int  2 2 4 7 6 4 2 3 5 3 ...
+# $ Balanced Diet           : int  2 2 6 7 7 6 2 4 5 3 ...
+# $ Obesity                 : int  4 2 7 7 7 7 4 3 5 3 ...
+# $ Smoking                 : int  3 2 2 7 8 2 3 1 6 2 ...
+# $ Passive Smoker          : int  2 4 3 7 7 3 2 4 6 3 ...
+# $ Chest Pain              : int  2 2 4 7 7 4 2 3 6 4 ...
+# $ Coughing of Blood       : int  4 3 8 8 9 8 4 1 5 4 ...
+# $ Fatigue                 : int  3 1 8 4 3 8 3 3 1 1 ...
+# $ Weight Loss             : int  4 3 7 2 2 7 4 2 4 2 ...
+# $ Shortness of Breath     : int  2 7 9 3 4 9 2 2 3 4 ...
+# $ Wheezing                : int  2 8 2 1 1 2 2 4 2 6 ...
+# $ Swallowing Difficulty   : int  3 6 1 4 4 1 3 2 4 5 ...
+# $ Clubbing of Finger Nails: int  1 2 4 5 2 4 1 2 6 4 ...
+# $ Frequent Cold           : int  2 1 6 6 4 6 2 3 2 2 ...
+# $ Dry Cough               : int  3 7 7 7 2 7 3 4 4 1 ...
+# $ Snoring                 : int  4 2 2 5 3 2 4 3 1 5 ...
+# $ Level                   : chr  "Low" "Medium" "High" "High" ...
+# - attr(*, ".internal.selfref")=<externalptr> 
+
+summary(lungcancer_raw)
+# index        Patient Id             Age            Gender      Air Pollution   Alcohol use   
+# Min.   :  0.0   Length:1000        Min.   :14.00   Min.   :1.000   Min.   :1.00   Min.   :1.000  
+# 1st Qu.:249.8   Class :character   1st Qu.:27.75   1st Qu.:1.000   1st Qu.:2.00   1st Qu.:2.000  
+# Median :499.5   Mode  :character   Median :36.00   Median :1.000   Median :3.00   Median :5.000  
+# Mean   :499.5                      Mean   :37.17   Mean   :1.402   Mean   :3.84   Mean   :4.563  
+# 3rd Qu.:749.2                      3rd Qu.:45.00   3rd Qu.:2.000   3rd Qu.:6.00   3rd Qu.:7.000  
+# Max.   :999.0                      Max.   :73.00   Max.   :2.000   Max.   :8.00   Max.   :8.000  
+# Dust Allergy   OccuPational Hazards  Genetic Risk  chronic Lung Disease Balanced Diet  
+# Min.   :1.000   Min.   :1.00         Min.   :1.00   Min.   :1.00         Min.   :1.000  
+# 1st Qu.:4.000   1st Qu.:3.00         1st Qu.:2.00   1st Qu.:3.00         1st Qu.:2.000  
+# Median :6.000   Median :5.00         Median :5.00   Median :4.00         Median :4.000  
+# Mean   :5.165   Mean   :4.84         Mean   :4.58   Mean   :4.38         Mean   :4.491  
+# 3rd Qu.:7.000   3rd Qu.:7.00         3rd Qu.:7.00   3rd Qu.:6.00         3rd Qu.:7.000  
+# Max.   :8.000   Max.   :8.00         Max.   :7.00   Max.   :7.00         Max.   :7.000  
+# Obesity         Smoking      Passive Smoker    Chest Pain    Coughing of Blood    Fatigue     
+# Min.   :1.000   Min.   :1.000   Min.   :1.000   Min.   :1.000   Min.   :1.000     Min.   :1.000  
+# 1st Qu.:3.000   1st Qu.:2.000   1st Qu.:2.000   1st Qu.:2.000   1st Qu.:3.000     1st Qu.:2.000  
+# Median :4.000   Median :3.000   Median :4.000   Median :4.000   Median :4.000     Median :3.000  
+# Mean   :4.465   Mean   :3.948   Mean   :4.195   Mean   :4.438   Mean   :4.859     Mean   :3.856  
+# 3rd Qu.:7.000   3rd Qu.:7.000   3rd Qu.:7.000   3rd Qu.:7.000   3rd Qu.:7.000     3rd Qu.:5.000  
+# Max.   :7.000   Max.   :8.000   Max.   :8.000   Max.   :9.000   Max.   :9.000     Max.   :9.000  
+# Weight Loss    Shortness of Breath    Wheezing     Swallowing Difficulty
+# Min.   :1.000   Min.   :1.00        Min.   :1.000   Min.   :1.000        
+# 1st Qu.:2.000   1st Qu.:2.00        1st Qu.:2.000   1st Qu.:2.000        
+# Median :3.000   Median :4.00        Median :4.000   Median :4.000        
+# Mean   :3.855   Mean   :4.24        Mean   :3.777   Mean   :3.746        
+# 3rd Qu.:6.000   3rd Qu.:6.00        3rd Qu.:5.000   3rd Qu.:5.000        
+# Max.   :8.000   Max.   :9.00        Max.   :8.000   Max.   :8.000        
+# Clubbing of Finger Nails Frequent Cold     Dry Cough        Snoring         Level          
+# Min.   :1.000            Min.   :1.000   Min.   :1.000   Min.   :1.000   Length:1000       
+# 1st Qu.:2.000            1st Qu.:2.000   1st Qu.:2.000   1st Qu.:2.000   Class :character  
+# Median :4.000            Median :3.000   Median :4.000   Median :3.000   Mode  :character  
+# Mean   :3.923            Mean   :3.536   Mean   :3.853   Mean   :2.926                     
+# 3rd Qu.:5.000            3rd Qu.:5.000   3rd Qu.:6.000   3rd Qu.:4.000                     
+# Max.   :9.000            Max.   :7.000   Max.   :7.000   Max.   :7.000 
+
+lungcancer_raw %>% sapply(function(x)sum(is.na(x)))
+# index               Patient Id                      Age 
+# 0                        0                        0 
+# Gender            Air Pollution              Alcohol use 
+# 0                        0                        0 
+# Dust Allergy     OccuPational Hazards             Genetic Risk 
+# 0                        0                        0 
+# chronic Lung Disease            Balanced Diet                  Obesity 
+# 0                        0                        0 
+# Smoking           Passive Smoker               Chest Pain 
+# 0                        0                        0 
+# Coughing of Blood                  Fatigue              Weight Loss 
+# 0                        0                        0 
+# Shortness of Breath                 Wheezing    Swallowing Difficulty 
+# 0                        0                        0 
+# Clubbing of Finger Nails            Frequent Cold                Dry Cough 
+# 0                        0                        0 
+# Snoring                    Level 
+# 0                        0 
+
+## Kopie erstellen
 lungcancer = copy(lungcancer_raw) 
+
 
 
 
 ##########################################
 # Säubern des Datensatzes
-# ToDo: OccuPational fehler korrigieren Column chronic Lung Disease name
+
 
 ## Patient ID und Index entfernen
 lungcancer[,(names(lungcancer)[0:2]):=NULL]
+
+## Spaltennamen korrigieren
+colnames(lungcancer)[colnames(lungcancer) == "Clubbing of Finger Nails"] = "Finger Nails Clubbing"
+colnames(lungcancer)[colnames(lungcancer) == "chronic Lung Disease"] = "Chronic Lung Disease"
+colnames(lungcancer)[colnames(lungcancer) == "OccuPational Hazards"] = "Occupational Hazards"
 
 ## Age in Integer umwandeln
 lungcancer[, Age := as.integer(Age)]
@@ -78,6 +193,10 @@ lungcancer[, Gender := as.character(Gender)][Gender == "2", Gender := "F"]
 ## Für Visualisierung abspeichern
 lungcancer_bar = copy(lungcancer) 
 
+# Schauen, welche ordinalen Werte es gibt
+unique_data <- sort(unique(as.vector(as.matrix(as.data.frame(lungcancer[,2:24])))))
+unique_data
+
 ## Faktoren einführen 
 lungcancer[,2:24] <- lapply(lungcancer[,2:24],as.factor)
 lungcancer[,3:23] <- lapply(lungcancer[,3:23],ordered)
@@ -85,7 +204,35 @@ lungcancer[, ("Level") := ordered(get("Level"), levels = c("Low", "Medium", "Hig
 
 ## Bereinigung checken
 levels(lungcancer$Level)
+# [1] "Low"    "Medium" "High" 
 str(lungcancer)
+# Classes ‘data.table’ and 'data.frame':	1000 obs. of  24 variables:
+#   $ Age                  : int  33 17 35 37 46 35 52 28 35 46 ...
+# $ Gender               : Factor w/ 2 levels "F","M": 2 2 2 2 2 2 1 1 1 2 ...
+# $ Air Pollution        : Ord.factor w/ 8 levels "1"<"2"<"3"<"4"<..: 2 3 4 7 6 4 2 3 4 2 ...
+# $ Alcohol use          : Ord.factor w/ 8 levels "1"<"2"<"3"<"4"<..: 4 1 5 7 8 5 4 1 5 3 ...
+# $ Dust Allergy         : Ord.factor w/ 8 levels "1"<"2"<"3"<"4"<..: 5 5 6 7 7 6 5 4 6 4 ...
+# $ Occupational Hazards : Ord.factor w/ 8 levels "1"<"2"<"3"<"4"<..: 4 3 5 7 7 5 4 3 5 2 ...
+# $ Genetic Risk         : Ord.factor w/ 7 levels "1"<"2"<"3"<"4"<..: 3 4 5 6 7 5 3 2 6 4 ...
+# $ Chronic Lung Disease : Ord.factor w/ 7 levels "1"<"2"<"3"<"4"<..: 2 2 4 7 6 4 2 3 5 3 ...
+# $ Balanced Diet        : Ord.factor w/ 7 levels "1"<"2"<"3"<"4"<..: 2 2 6 7 7 6 2 4 5 3 ...
+# $ Obesity              : Ord.factor w/ 7 levels "1"<"2"<"3"<"4"<..: 4 2 7 7 7 7 4 3 5 3 ...
+# $ Smoking              : Ord.factor w/ 8 levels "1"<"2"<"3"<"4"<..: 3 2 2 7 8 2 3 1 6 2 ...
+# $ Passive Smoker       : Ord.factor w/ 8 levels "1"<"2"<"3"<"4"<..: 2 4 3 7 7 3 2 4 6 3 ...
+# $ Chest Pain           : Ord.factor w/ 9 levels "1"<"2"<"3"<"4"<..: 2 2 4 7 7 4 2 3 6 4 ...
+# $ Coughing of Blood    : Ord.factor w/ 9 levels "1"<"2"<"3"<"4"<..: 4 3 8 8 9 8 4 1 5 4 ...
+# $ Fatigue              : Ord.factor w/ 8 levels "1"<"2"<"3"<"4"<..: 3 1 7 4 3 7 3 3 1 1 ...
+# $ Weight Loss          : Ord.factor w/ 8 levels "1"<"2"<"3"<"4"<..: 4 3 7 2 2 7 4 2 4 2 ...
+# $ Shortness of Breath  : Ord.factor w/ 8 levels "1"<"2"<"3"<"4"<..: 2 7 8 3 4 8 2 2 3 4 ...
+# $ Wheezing             : Ord.factor w/ 8 levels "1"<"2"<"3"<"4"<..: 2 8 2 1 1 2 2 4 2 6 ...
+# $ Swallowing Difficulty: Ord.factor w/ 8 levels "1"<"2"<"3"<"4"<..: 3 6 1 4 4 1 3 2 4 5 ...
+# $ Finger Nails Clubbing: Ord.factor w/ 9 levels "1"<"2"<"3"<"4"<..: 1 2 4 5 2 4 1 2 6 4 ...
+# $ Frequent Cold        : Ord.factor w/ 7 levels "1"<"2"<"3"<"4"<..: 2 1 6 6 4 6 2 3 2 2 ...
+# $ Dry Cough            : Ord.factor w/ 7 levels "1"<"2"<"3"<"4"<..: 3 7 7 7 2 7 3 4 4 1 ...
+# $ Snoring              : Ord.factor w/ 7 levels "1"<"2"<"3"<"4"<..: 4 2 2 5 3 2 4 3 1 5 ...
+# $ Level                : Ord.factor w/ 3 levels "Low"<"Medium"<..: 1 2 3 3 3 3 1 1 2 2 ...
+# - attr(*, ".internal.selfref")=<externalptr> 
+#   - attr(*, "index")= int(0) 
 
 ## In besäuberte data.table abspeichern
 lungcancer_clean = copy(lungcancer) 
@@ -106,7 +253,7 @@ ggsave(filename = "pairplot.svg",
   path = "./plots",
   scale = 1,
   width = 11000,
-  height = 11000,
+  height = 15000,
   units = "px",
   dpi = 300,
   limitsize = FALSE,
@@ -135,7 +282,7 @@ ggsave(filename = "barplot.svg",
        limitsize = FALSE,
 )
 
-## Check Balance der Target-Klassen #Frage: unbalanciert?
+## Check Balance der Target-Klassen: keine große Imbalance
 ggally_barDiag(lungcancer_clean, 
                mapping = ggplot2::aes(x = Level), 
                rescale = FALSE)
@@ -152,64 +299,37 @@ ggsave(filename = "target_balance.svg",
        limitsize = FALSE,
 )
 
-
-
-
-##########################################
-# Featureselektion und -reduktion
-# https://www.r-bloggers.com/2022/02/beginners-guide-to-machine-learning-in-r-with-step-by-step-tutorial/
-# Fragen: Reduktion nötig? guter Ansatz?
-
-
-## Korrelation einzelner Spalten mit dem Level des Lungenkrebs -> je höher desto wichtiger? Fragen
-corr_level <- lungcancer_clean %>% 
+## Korrelation einzelner Spalten mit dem Level des Lungenkrebs
+corr_level <- lungcancer_clean %>%
               mutate_if(is.factor, as.numeric) %>%
-              cor() %>% 
-              as.data.frame() %>% 
-              select(Level) %>% 
+              cor() %>%
+              as.data.frame() %>%
+              select(Level) %>%
               arrange(-Level)
-
-## Korrelation der Features untereinander
-corr <- lungcancer_clean %>% 
-        mutate_if(is.factor, as.numeric) %>%
-        cor() %>% 
-        as.data.frame()
-
-## Korrelationsmatrix (Dimensions: 2300x1000)
-corr %>% mutate(var2=rownames(.)) %>%
-         pivot_longer(!var2, values_to = "value") %>%
-         ggplot(aes(x=name, y=var2, fill = abs(value), label = round(value,2))) +
-         geom_tile() + geom_label() + xlab("") + ylab("") +
-         ggtitle("Korrelationsmatrix der Prediktoren") +
-         labs(fill="Korrelation\n(absolut):")
+### Plotten und speichern der Tabelle
+png("./plots/correlation_table.png", height=600, width=300)
+grid.table(corr_level)
+dev.off()
+                  
+## Korrelationsplot für kategorische Features
+model.matrix(~0+., data = lungcancer_clean) %>%
+  cor(use = "pairwise.complete.obs") %>% 
+  ggcorrplot(show.diag = FALSE,
+             type = "lower",
+             lab = TRUE,
+             lab_size = 2)
 ### Speichern der Korrelationsmatrix
-ggsave(filename = "correlation_matrix.svg",
+ggsave(filename = "correlation_plot.svg",
        plot = last_plot(),
        device = "svg",
        path = "./plots",
        scale = 1,
-       width = 10000,
-       height = 5500,
+       width = 15000,
+       height = 10000,
        units = "px",
        dpi = 300,
        limitsize = FALSE,
-)
-
-## Features finden, die hoch korreliert sind (>0.8) und deren Indices verwerfen
-highly_corr <- caret::findCorrelation(cor(corr), cutoff=0.8)
-highly_corr
-## Hochkorrelierte Spalten entfernen
-lungcancer_slct <- lungcancer_clean[, (names(lungcancer_raw)[highly_corr]):=NULL]
-
-
-
-## ToDo mit Cramer wegen Faktoren Features? # Frage ob das besser ist als Korrelation 
-## Für Features
-lungcancer_cramer <- lungcancer_clean[, !c("Age","Level")]
-assoc <- table(lungcancer_cramer)
-## Calculate Cramer's V
-## assocstats(lungcancer_cramer$cramer)
-assocstats(assoc$cramer) 
+) #ToDo Buchstaben beim Encoding richten
 
 
 
@@ -219,23 +339,26 @@ assocstats(assoc$cramer)
 
 
 ## Splitten zu 80/20 und Conversion zu data frame für preprocessing
-split <- sample(1:nrow(lungcancer_slct), as.integer(0.8*nrow(lungcancer_slct)), F)
-train <- as.data.frame(lungcancer_slct[split,])
-test <- as.data.frame(lungcancer_slct[-split,])
+split <- sample(1:nrow(lungcancer_clean), as.integer(0.8*nrow(lungcancer_clean)), F)
+train <- as.data.frame(lungcancer_clean[split,])
+test <- as.data.frame(lungcancer_clean[-split,])
 
 ## Checken, ob Dimensionen erhalten sind
 dim(train)
+# [1] 800  24
 dim(test)
+# [1] 200  24
 class(train)
+# [1] "data.frame"
 class(test)
+# [1] "data.frame"
 
 
 
 
 ##########################################
 # Preprocessing
-# ToDo: Muss ich hier noch mehr machen?
-# Frage: Muss ich nach skewedness schauen? https://www.r-bloggers.com/2015/07/how-to-make-a-rough-check-to-see-if-your-data-is-normally-distributed/
+
 
 ## Funktion für Preprocessing, das auf die Daten angewandt werden soll
 preprocessing <- function(df){
@@ -247,7 +370,7 @@ preprocessing <- function(df){
   return(df[, names(df)!="Level"])
 }
 
-## Anwenden der preprocessing Funktion auf Train und Test Datenset
+## Anwenden der preprocessing-Funktion auf Train und Test Datenset
 x_train <- preprocessing(train)
 x_test <- preprocessing(test)
 y_train <- train[, "Level"]
@@ -308,6 +431,7 @@ prediction <- predict(model, newdata = x_test)
 confusionMatrix(prediction, y_test)
 
 
+
 ## ToDo: tut nicht
 precision(prediction, y_test)
 recall(prediction, y_test)
@@ -325,3 +449,11 @@ tpn = performance(perf, "tpr","fpr")
 # 3. Plot the ROC curve
 plot(pred3,main="ROC Curve for Random Forest",col=2,lwd=2)
 abline(a=0,b=1,lwd=2,lty=2,col="gray")
+
+
+
+###################################
+# Packages checken
+
+pkgs <- NCmisc::list.functions.in.file("Frank_Sabrina__BDR__Projektarbeit__12_2023.R")
+summary(pkgs)
