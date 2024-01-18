@@ -1,9 +1,9 @@
-####################################
-# Lung Cancer Risk Prediction in R #
-# Author: Sabrina Frank            #
-# Date: 15.01.2024                 #
-# Project: Big Data Management     #
-####################################
+##############################################
+# Lung Cancer Risk Prediction in R           #
+# Author: Sabrina Frank                      #
+# Date: 15.01.2024                           #
+# Project: Big Data Management mit SQL und R #
+##############################################
 
 
 ##########################################
