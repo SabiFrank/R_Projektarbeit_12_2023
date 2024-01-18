@@ -294,13 +294,13 @@ grid.table(corr_level)
 dev.off()
                   
 ## Korrelationsplot für kategorische Features
-model.matrix(~0+., data = lungcancer_clean) %>%
-  cor(use = "pairwise.complete.obs") %>% 
+model.matrix(~0+., data = lungcancer_clean[, (names(lungcancer_clean)[24]) := NULL]) %>%
+  cor(use = "pairwise.complete.obs", 
+      method = "spearman") %>% 
   ggcorrplot(show.diag = FALSE,
              type = "lower",
              lab = TRUE,
              lab_size = 2)
-print(model.matrix(~0+., data = lungcancer_clean))
 ### Speichern der Korrelationsmatrix
 ggsave(filename = "correlation_plot.svg",
        plot = last_plot(),
@@ -312,7 +312,8 @@ ggsave(filename = "correlation_plot.svg",
        units = "px",
        dpi = 300,
        limitsize = FALSE,
-) #ToDo Buchstaben beim Encoding richten
+) 
+#ToDo Buchstaben beim Encoding richten
 
 
 
