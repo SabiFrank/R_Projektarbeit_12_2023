@@ -12,7 +12,7 @@
 
 ## Pipes
 # install.packages("magrittr")
-library(magrittr)
+######library(magrittr)
 # install.packages("dplyr")
 library(dplyr)
 
@@ -24,33 +24,35 @@ library(data.table)
 # install.packages("GGally")
 library(GGally) # Pairplots
 # install.packages("svglite")
-library(svglite) # für ggsave Funktion
+######library(svglite) # für ggsave Funktion
 # install.packages("gridExtra")
 library(gridExtra)
+
+
 
 # install.packages("caret")
 library(caret) #Confusionmatrix
 # install.packages("mlbench")
-library(mlbench) #Confusionmatrix
+######library(mlbench) #Confusionmatrix
 
-# install.packages("tidyverse")
-library(tidyverse)
+# install.packages("tidyr")
+library(tidyr)
 # install.packages("party")
-library(party)
+######library(party)
 # install.packages("vcd")
-library(vcd) # für Korrelationsanalyse für nicht numerische Features
+######library(vcd) # für Korrelationsanalyse für nicht numerische Features
 
 
 # Für measure of association (Korrelationsmatrix für kategorische Daten)
 # install.packages("ggcorrplot")
 library(ggcorrplot) 
 # install.packages("rcompanion")
-library(rcompanion) 
+######library(rcompanion) 
 
 
 # Für Machine Learning Algorithmus
 # install.packages("randomForest")
-library(randomForest)
+######library(randomForest)
 
 
 ## Checken, welche Packages verwendet wurden
@@ -191,7 +193,7 @@ lungcancer[, Gender := as.character(Gender)][Gender == "1", Gender := "M"]
 lungcancer[, Gender := as.character(Gender)][Gender == "2", Gender := "F"]
 
 ## Für Visualisierung abspeichern
-lungcancer_bar = copy(lungcancer) 
+lungcancer_bar = copy(lungcancer[, !c("Age", "Gender")]) 
 
 # Schauen, welche ordinalen Werte es gibt
 unique_data <- sort(unique(as.vector(as.matrix(as.data.frame(lungcancer[,2:24])))))
@@ -260,7 +262,6 @@ ggsave(filename = "pairplot.svg",
 )
 
 ## Barplots für kategorische Spalten
-lungcancer_bar <- lungcancer_bar[, !c("Age", "Gender")]
 lungcancer_bar %>% pivot_longer(!Level, values_to = "value") %>%
                   # ggplot(aes(x = value, fill = factor(Level))) +
                   ggplot(aes(x=factor(value), fill=ordered(Level, c("Low", "Medium", "High")))) +
@@ -318,6 +319,7 @@ model.matrix(~0+., data = lungcancer_clean) %>%
              type = "lower",
              lab = TRUE,
              lab_size = 2)
+print(model.matrix(~0+., data = lungcancer_clean))
 ### Speichern der Korrelationsmatrix
 ggsave(filename = "correlation_plot.svg",
        plot = last_plot(),
@@ -385,39 +387,49 @@ y_test <- test[, "Level"]
 # https://www.r-bloggers.com/2022/02/beginners-guide-to-machine-learning-in-r-with-step-by-step-tutorial/
 
 
+## Festlegen der Trainingseinstellungen
+ctrl <- trainControl(method = "cv", 
+                     number = 5, 
+                     verboseIter = TRUE,
+                     classProbs = TRUE,
+                     savePredictions = TRUE)
+
+grid <- expand.grid(mtry = seq(5, ncol(x_train), 
+                    by = 5))
+
 model <- caret::train(x_train,
                       y_train,
                       method = "rf",
-                      tuneGrid = expand.grid(mtry = seq(5, ncol(x_train), by = 5)),
-                      trControl = trainControl(method = "cv", number = 5, verboseIter = T))
+                      tuneGrid = grid,
+                      trControl = ctrl)
 model
 # Random Forest 
 # 
 # 800 samples
-# 13 predictor
+# 23 predictor
 # 3 classes: 'Low', 'Medium', 'High' 
 # 
 # No pre-processing
 # Resampling: Cross-Validated (5 fold) 
-# Summary of sample sizes: 640, 641, 641, 640, 638 
+# Summary of sample sizes: 641, 639, 640, 640, 640 
 # Resampling results across tuning parameters:
 #   
-#   mtry  Accuracy  Kappa
-# 5    1         1    
+# mtry  Accuracy  Kappa
+# 05    1         1    
 # 10    1         1    
+# 15    1         1    
+# 20    1         1    
 # 
 # Accuracy was used to select the optimal model using the largest value.
 # The final value used for the model was mtry = 5.
 
-print(model)
-
+## Plotten und speichern der Wichtigkeit der Features im RF Algorithmus
+png("./plots/feature_importance.png", height=600, width=600)
 plot(varImp(model), 
-     main = "Feature-Wichtigkeit des RF Models",
+     main = "Feature-Wichtigkeit des RF Models im Trainig",
      xlab = "Wichtigkeit")
+dev.off()
 
-
-train_accuracy <- max(model$results$Accuracy)
-train_accuracy
 
 
 
@@ -429,26 +441,32 @@ prediction <- predict(model, newdata = x_test)
 
 ## Confusionsmatrix
 confusionMatrix(prediction, y_test)
+# Reference
+# Prediction Low Medium High
+# Low     63      0    0
+# Medium   0     64    0
+# High     0      0   73
+# 
+# Overall Statistics
+# 
+# Accuracy : 1          
+# 95% CI : (0.9817, 1)
+# No Information Rate : 0.365      
+# P-Value [Acc > NIR] : < 2.2e-16  
+# Kappa : 1          
+# Mcnemar's Test P-Value : NA         
+# 
+# Statistics by Class:
+#                      Class: Low Class: Medium Class: High
+# Sensitivity               1.000          1.00       1.000
+# Specificity               1.000          1.00       1.000
+# Pos Pred Value            1.000          1.00       1.000
+# Neg Pred Value            1.000          1.00       1.000
+# Prevalence                0.315          0.32       0.365
+# Detection Rate            0.315          0.32       0.365
+# Detection Prevalence      0.315          0.32       0.365
+# Balanced Accuracy         1.000          1.00       1.000
 
-
-
-## ToDo: tut nicht
-precision(prediction, y_test)
-recall(prediction, y_test)
-F_meas(prediction, y_test)
-
-
-propability <- predict(model, type = "prob")
-library(ROCR)
-perf = prediction(pred1[,2], mydata$Creditability)
-# 1. Area under curve
-auc = performance(perf, "auc")
-auc
-# 2. True Positive and Negative Rate
-tpn = performance(perf, "tpr","fpr")
-# 3. Plot the ROC curve
-plot(pred3,main="ROC Curve for Random Forest",col=2,lwd=2)
-abline(a=0,b=1,lwd=2,lty=2,col="gray")
 
 
 
@@ -457,3 +475,4 @@ abline(a=0,b=1,lwd=2,lty=2,col="gray")
 
 pkgs <- NCmisc::list.functions.in.file("Frank_Sabrina__BDR__Projektarbeit__12_2023.R")
 summary(pkgs)
+
