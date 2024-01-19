@@ -313,7 +313,6 @@ ggsave(filename = "correlation_plot.svg",
        dpi = 300,
        limitsize = FALSE,
 ) 
-#ToDo Buchstaben beim Encoding richten
 
 
 
